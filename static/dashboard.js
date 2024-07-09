@@ -1,4 +1,4 @@
-function changePassword(event) {
+function updatePassword(event) {
     event.preventDefault();
     var formData = $('#change-password').serialize();
     var pass1 = document.getElementById('password').value
@@ -7,6 +7,7 @@ function changePassword(event) {
         document.getElementById('response-message').innerHTML = "Passwords don't match."
         return;
     }
+
     $.ajax({
         url: '/changepassword',
         type: 'POST',
@@ -19,6 +20,7 @@ function changePassword(event) {
             document.getElementById('response-message').innerHTML = response.message;
         }
     });
+    document.getElementById('#change-password').reset();
 }
 
 function updateProfile() {
