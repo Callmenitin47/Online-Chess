@@ -3,10 +3,17 @@ import mysql.connector as connector
 import bcrypt
 
 app=Flask(__name__)
+app.secret_key="enufwbqbiuwefbwebfuwergbfyewrgbuewrgbuyrbbwueuwen"
 sqlDB_username="root"
 sqlDB_password="root"
 sqlDB_host="localhost"
 sqlDB_database="chess"
+
+
+def checkLogin():
+	if session.get('username'):
+		return True
+	return False
 
 def get_db_connection():
 	return connector.connect(
@@ -18,6 +25,8 @@ def get_db_connection():
 
 @app.route('/home')
 def home():
+	if checkLogin()==True:
+		return render_template('dashboard.html')
 	return render_template("home.html")
 
 @app.route('/signup',methods=['POST'])
@@ -51,6 +60,7 @@ def login():
 	cursor=connection.cursor();
 	cursor.execute(query,(username,))
 	row=cursor.fetchone();
+	print(row)
 	if row:
 		if bcrypt.checkpw(password.encode('utf-8'),row[0].encode('utf-8')):
 			session['username']=username;
@@ -59,6 +69,47 @@ def login():
 			return jsonify({"message":"Username/Password is Incorrect"}),401
 	else:
 		return jsonify({"message":"Username/Password is Incorrect"}),401
+
+
+@app.route('/updatepassword')
+def updatepassword():
+	if checkLogin()==True:
+		return render_template('updatepassword.html')
+	return redirect('/home')
+
+@app.route('/changepassword',methods=['POST'])
+def changepassword():
+	if checkLogin()==False:
+		return redirect('/home')
+
+	connection=get_db_connection()
+	cursor=connection.cursor()
+	username=session.get('username')
+	password=request.form['password']
+	old_password=request.form['old-password']
+
+	query="SELECT password_hash from users where username=%s"
+	cursor.execute(query,(username,))
+	row=cursor.fetchone();
+	if not bcrypt.checkpw(old_password.encode('utf-8'),row[0].encode('utf-8')):
+		return jsonify({"message":"Old password is Incorrect"}),401
+
+	hashed_password=bcrypt.hashpw(password.encode('utf-8'),bcrypt.gensalt())
+	query="UPDATE users set password_hash=%s where username=%s"
+	cursor.execute(query,(hashed_password,username,))
+	connection.commit()
+
+	return jsonify({"message":"Password has been succesfully updated."}),200
+
+
+
+@app.route('/profile')
+def profile():
+	if checkLogin()==True:
+		return render_template('dashboard.html')
+	else:
+		return redirect('/home')
+
 
 	
 
