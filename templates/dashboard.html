@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/dashboard.js"></script>
+</head>
+<body class="dashboard-body">
+
+<div class="dashboard-container">
+    <img src="/static/files/avatar.jpg" alt="Profile Picture" class="profile-picture">
+    <div class="user-info">
+        <div><strong>Full Name:</strong> John Doe</div>
+        <div><strong>Username:</strong> johndoe123</div>
+        <div><strong>Country Rank:</strong> 150</div>
+        <div><strong>Worldwide Rank:</strong> 500</div>
+        <div class="elo-rating">Elo Rating: 1200</div>
+        <div><strong>Total Games Played:</strong> 50</div>
+        <div><strong>Games Won:</strong> 25</div>
+        <div><strong>Games Drawn:</strong> 10</div>
+    </div>
+    <div class="buttons">
+        <button onclick="updateProfile()">Update Profile</button>
+        <button onclick="changePassword()">Change Password</button>
+    </div>
+    <button class="play-button" onclick="playGame()">Play Game</button>
+</div>
+</body>
+</html>
