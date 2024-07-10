@@ -1,178 +1,189 @@
 .main-body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+font-family: Arial, sans-serif;
+background-color: #f4f4f4;
+display: flex;
+justify-content: center;
+align-items: center;
+height: 100vh;
 }
 .container {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    width: 300px;
+background-color: #fff;
+padding: 20px;
+border-radius: 5px;
+box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+width: 300px;
 }
 .form-group {
-    margin-bottom: 15px;
+margin-bottom: 15px;
 }
 .form-group label {
-    display: block;
-    margin-bottom: 5px;
+display: block;
+margin-bottom: 5px;
 }
-.form-group input, .form-group select {
-    width: 100%;
-    padding: 8px;
-    box-sizing: border-box;
+.form-group input,
+.form-group select {
+width: 100%;
+padding: 8px;
+box-sizing: border-box;
 }
 .btn {
-    width: 100%;
-    padding: 10px;
-    background-color: #5cb85c;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+width: 100%;
+padding: 10px;
+background-color: #5cb85c;
+color: #fff;
+border: none;
+border-radius: 5px;
+cursor: pointer;
 }
 .btn:hover {
-    background-color: #4cae4c;
+background-color: #4cae4c;
 }
 .toggle-link {
-    display: block;
-    margin-top: 10px;
-    text-align: center;
-    cursor: pointer;
-    color: #007bff;
+display: block;
+margin-top: 10px;
+text-align: center;
+cursor: pointer;
+color: #007bff;
 }
 
-
 body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f0f0f0;
+font-family: Arial, sans-serif;
+margin: 0;
+padding: 0;
+background-color: #f0f0f0;
 }
 
 header {
-    text-align: center;
-    padding: 20px;
-    background-color: #007bff;
-    color: #fff;
+text-align: center;
+padding: 20px;
+background-color: #007bff;
+color: #fff;
 }
 
 h1 {
-    margin: 0;
+margin: 0;
 }
 
 .dashboard-body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(45deg, #999 25%, transparent 25%, transparent 75%, #999 75%, #999),
-                        linear-gradient(45deg, #999 25%, transparent 25%, transparent 75%, #999 75%, #999);
-            background-size: 60px 60px;
-            background-position: 0 0, 30px 30px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .password-reset-container {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 300px;
-            text-align: center;
-        }
-        .password-form-group {
-            margin-bottom: 20px;
-        }
-        .password-form-group label {
-            display: block;
-            margin-bottom: 5px;
-            text-align: left;
-        }
-        .password-form-group input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
-        .password-form-group input:focus {
-            outline: none;
-            border-color: #007bff;
-        }
-        .button-container {
-            text-align: center;
-        }
-        .button-container button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .button-container button:hover {
-            background-color: #0056b3;
-        }
+font-family: Arial, sans-serif;
+margin: 0;
+padding: 0;
+background: linear-gradient(
+45deg,
+#999 25%,
+transparent 25%,
+transparent 75%,
+#999 75%,
+#999
+),
+linear-gradient(
+45deg,
+#999 25%,
+transparent 25%,
+transparent 75%,
+#999 75%,
+#999
+);
+background-size: 60px 60px;
+background-position: 0 0, 30px 30px;
+display: flex;
+justify-content: center;
+align-items: center;
+height: 100vh;
+}
+.password-reset-container {
+background-color: #fff;
+padding: 20px;
+border-radius: 8px;
+box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+width: 300px;
+text-align: center;
+}
+.password-form-group {
+margin-bottom: 20px;
+}
+.password-form-group label {
+display: block;
+margin-bottom: 5px;
+text-align: left;
+}
+.password-form-group input {
+width: 100%;
+padding: 10px;
+border: 1px solid #ccc;
+border-radius: 5px;
+box-sizing: border-box;
+}
+.password-form-group input:focus {
+outline: none;
+border-color: #007bff;
+}
+.button-container {
+text-align: center;
+}
+.button-container button {
+background-color: #5cb85c;
+color: white;
+border: none;
+padding: 10px 20px;
+border-radius: 5px;
+cursor: pointer;
+}
+.button-container button:hover {
+background-color: #4cae4c;
+}
 
 .dashboard-container {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 300px;
-            text-align: center;
-        }
-        .profile-picture {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            margin-bottom: 20px;
-        }
-        .user-info {
-            margin-bottom: 20px;
-        }
-        .user-info div {
-            margin-bottom: 10px;
-            text-align: left;
-        }
-        .elo-rating {
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .buttons {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 20px;
-        }
-        .buttons button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            cursor: pointer;
-        }
-        .buttons button:hover {
-            background-color: #0056b3;
-        }
-        .play-button {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            width: 100%;
-        }
-        .play-button:hover {
-            background-color: #218838;
-        }
-
-
-
+background-color: #fff;
+padding: 20px;
+border-radius: 8px;
+box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+width: 300px;
+text-align: center;
+}
+.profile-picture {
+width: 100px;
+height: 100px;
+border-radius: 50%;
+margin-bottom: 20px;
+}
+.user-info {
+margin-bottom: 20px;
+}
+.user-info div {
+margin-bottom: 10px;
+text-align: left;
+}
+.elo-rating {
+font-weight: bold;
+margin-bottom: 10px;
+}
+.buttons {
+display: flex;
+flex-direction: column;
+margin-bottom: 20px;
+}
+.buttons button {
+background-color: #007bff;
+color: white;
+border: none;
+padding: 10px;
+border-radius: 5px;
+margin-bottom: 10px;
+cursor: pointer;
+}
+.buttons button:hover {
+background-color: #0056b3;
+}
+.play-button {
+background-color: #28a745;
+color: white;
+border: none;
+padding: 15px;
+border-radius: 5px;
+cursor: pointer;
+width: 100%;
+}
+.play-button:hover {
+background-color: #218838;
+}
