@@ -5,21 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="/static/dashboard.js"></script>
 </head>
 <body class="dashboard-body">
 
 <div class="dashboard-container">
-    <img src="/static/files/avatar.jpg" alt="Profile Picture" class="profile-picture">
+    <img src="/static/files/{{data.dp}}" alt="Profile Picture" class="profile-picture">
     <div class="user-info">
-        <div><strong>Full Name:</strong> John Doe</div>
-        <div><strong>Username:</strong> johndoe123</div>
-        <div><strong>Country Rank:</strong> 150</div>
-        <div><strong>Worldwide Rank:</strong> 500</div>
-        <div class="elo-rating">Elo Rating: 1200</div>
-        <div><strong>Total Games Played:</strong> 50</div>
-        <div><strong>Games Won:</strong> 25</div>
-        <div><strong>Games Drawn:</strong> 10</div>
+        <div><strong>Full Name:</strong> {{data.fullname}}</div>
+        <div><strong>Username:</strong> {{data.username}}</div>
+        <div><strong>Country Rank:</strong> #{{data.country_rank}}</div>
+        <div><strong>Worldwide Rank:</strong> #{{data.world_rank}}</div>
+        <div class="elo-rating">Elo Rating: {{data.elo_rating}}</div>
+        <div><strong>Total Games Played:</strong> {{data.total}}</div>
+        <strong>Won:</strong> {{data.won}}
+        <strong>Drawn:</strong> {{data.drawn}}
+        <strong>lost:</strong> {{data.lost}}
     </div>
     <div class="buttons">
         <button onclick="updateProfile()">Update Profile</button>
