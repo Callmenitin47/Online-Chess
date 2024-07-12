@@ -59,12 +59,23 @@ function updateProfileData(event) {
  function selectCountry() {
      var element = document.querySelector('#country');
      const customAttributeValue = element.getAttribute('selected-country');
-     for (let i = 0; i < selectElement.options.length; i++) {
-         if (selectElement.options[i].value === customAttributeValue) {
-             selectElement.selectedIndex = i;
+     for (let i = 0; i < element.options.length; i++) {
+         if (element.options[i].value === customAttributeValue) {
+             element.selectedIndex = i;
              break;
          }
      }
  }
 
 selectCountry();
+
+document.getElementById('upload-photo').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('profile-image').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
