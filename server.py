@@ -2,6 +2,7 @@ from flask import Flask,redirect,session,render_template,request,jsonify
 import mysql.connector as connector
 import bcrypt
 from pymongo import MongoClient
+import random
 
 app=Flask(__name__)
 app.secret_key="enufwbqbiuwefbwebfuwergbfyewrgbuewrgbuyrbbwueuwen"
@@ -19,6 +20,14 @@ def checkLogin():
 		return True
 	return False
 
+def random_filename():
+    out=""
+    arr=[[ord('a'),ord('z')],[ord('A'),ord('Z')],[ord('0'),ord('9')]]
+    for i in range(0,20):
+        choice=random.randint(0,2)
+        out=out+chr(random.randint(arr[choice][0],arr[choice][1]));      
+    return out
+
 def get_db_connection():
 	return connector.connect(
 	host=sqlDB_host,
@@ -30,7 +39,7 @@ def get_db_connection():
 @app.route('/home')
 def home():
 	if checkLogin()==True:
-		return render_template('dashboard.html')
+		return redirect('/profile')
 	return render_template("home.html")
 
 @app.route('/signup',methods=['POST'])
@@ -59,14 +68,15 @@ def signup():
 def login():
 	username=request.form['username']
 	password=request.form['password']
-	query="SELECT password_hash from users where username=%s"
+	query="SELECT id,password_hash from users where username=%s"
 	connection=get_db_connection()
 	cursor=connection.cursor();
 	cursor.execute(query,(username,))
 	row=cursor.fetchone();
 	if row:
-		if bcrypt.checkpw(password.encode('utf-8'),row[0].encode('utf-8')):
-			session['username']=username;
+		if bcrypt.checkpw(password.encode('utf-8'),row[1].encode('utf-8')):
+			session['username']=username
+			session['id']=row[0]
 			return jsonify({"message":"Login successful"}),200
 		else:
 			return jsonify({"message":"Username/Password is Incorrect"}),401
@@ -111,13 +121,13 @@ def profile():
 	if checkLogin()==True:
 		connection=get_db_connection()
 		cursor=connection.cursor(dictionary=True)
-		username=session.get('username')
+		userid=session.get('id')
 		user_data=dict()
 
 		user_profile_query="""
-		SELECT * FROM users WHERE username=%s
+		SELECT * FROM users WHERE id=%s
 		"""
-		cursor.execute(user_profile_query,(username,))
+		cursor.execute(user_profile_query,(userid,))
 		row=cursor.fetchone();
 		
 		user_data['id']=row['id']
@@ -136,7 +146,7 @@ def profile():
 		    WHERE id = %s
 		);
 		"""
-		cursor.execute(world_rank_query,(username,))
+		cursor.execute(world_rank_query,(userid,))
 		row=cursor.fetchone()
 		user_data['world_rank']=row['world_rank']
 
@@ -153,7 +163,7 @@ def profile():
 		    WHERE id = %s
 		);
 		"""
-		cursor.execute(country_rank_query,(username,username,))
+		cursor.execute(country_rank_query,(userid,userid,))
 		row=cursor.fetchone()
 		user_data['country_rank']=row['country_rank']
 
@@ -181,6 +191,58 @@ def profile():
 		return render_template('dashboard.html',data=user_data)
 	else:
 		return redirect('/home')
+
+@app.route('/updatedata')
+def updatedata():
+	if checkLogin()==True:
+		data=dict()
+		userid=session.get('id')
+		username=session.get('username')
+		connection=get_db_connection()
+		cursor=connection.cursor(dictionary=True)
+		cursor.execute("SELECT * FROM users WHERE username=%s and id=%s",(username,userid,))
+		row=cursor.fetchone();
+		data['username']=row['username']
+		data['email']=row['email']
+		data['dp']=row['DP']
+		data['country']=row['country']
+		data['fullname']=row['fullname']
+		return render_template('updateprofile.html',data=data)
+	return redirect('/home')
+
+@app.route('/updateprofile',methods=['POST'])
+def updateprofile():
+	userid=session.get('id')
+	username=session.get('username')
+	input_username=request.form['username']
+	email=request.form['email']
+	fullname=request.form['fullname']
+	country=request.form['country']
+	file=request.files['dp']
+	connection=get_db_connection()
+	cursor=connection.cursor(dictionary=True)
+	cursor.execute("SELECT * FROM users WHERE username=%s and id!=%s",(input_username,userid,))
+	username_exists=cursor.fetchone()
+	cursor.execute("SELECT * FROM users WHERE email=%s and id!=%s",(email,userid,))
+	email_exists=cursor.fetchone()
+	if username_exists:
+		return jsonify({'error':'Username is already taken'}),400
+	if email_exists:
+		return jsonify({'error':'Email is already taken'}),400
+
+	if file.filename!='':
+		fname=random_filename()
+		file.save(f"static/files/{fname}")
+		update_query="UPDATE users SET email=%s,username=%s,fullname=%s,country=%s,DP=%s WHERE id=%s"
+		cursor.execute(update_query,(email,input_username,fullname,country,fname,userid))
+	else:
+		update_query="UPDATE users SET email=%s,username=%s,fullname=%s,country=%s WHERE id=%s"
+		cursor.execute(update_query,(email,input_username,fullname,country,userid))
+
+	session['username']=input_username
+	connection.commit()
+	
+	return jsonify({'message':'Profile has been sucessfully updated.'})
 
 app.run(debug=True)
 
