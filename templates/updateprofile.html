@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    <link rel="stylesheet" href="../static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body class="dashboard-body">
+
+<div class="dashboard-container">
+    <img src="/static/files/{{data.dp}}" alt="Profile Picture"  class="profile-picture">
+    <form class="user-info" id="profile-data" onsubmit="updateProfileData(event)">
+<input type="file" name='dp' id="upload-photo"  >
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" name="username"  value={{data.username}} placeholder={{data.username}} required>
+                </div>
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="email" name="email" value={{data.email}} placeholder={{data.email}} required>
+                </div>
+                <div class="form-group">
+                    <label for="fullname">Full name</label>
+                    <input type="text" id="fullname" name="fullname" value={{data.fullname}} placeholder={{data.fullname}} required>
+                </div>
+                <div class="form-group">
+                    <label for="country" >Country</label>
+                    <select id="country" selected-country="{{data.country}}" name="country" required>
+                        <option value="USA">USA</option>
+                        <option value="UK">UK</option>
+                        <option value="India">India</option>
+                        <option value="Canada">Canada</option>
+                        <option value="Australia">Australia</option>
+                    </select>
+                </div>
+    <div class="buttons">
+        <button onclick="updateProfileData()">Update Profile</button>
+    </div>
+    </form>
+</div>
+   <script src="/static/dashboard.js"></script>
+</body>
+</html>
