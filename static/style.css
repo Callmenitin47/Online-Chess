@@ -191,3 +191,73 @@ background-color: #218838;
 }
 
 .profile-input{ width:80%; margin:10px; padding:5px;}
+
+
+/* 
+Chess board styling
+*/
+
+
+.container {
+display: flex;
+width: 90vw;
+height: 90vh;
+}
+.chess-board {
+flex: 1;
+max-width: 600px;
+max-height: 600px;
+display: grid;
+grid-template-columns: repeat(8, 1fr);
+grid-template-rows: repeat(8, 1fr);
+gap: 1px;
+background-color: #ccc;
+}
+
+.chess-board .bright {
+background-color: #f0d9b5;
+background-size: cover;
+}
+.chess-board .bright:hover {
+cursor: pointer;
+}
+
+.chess-board .dark {
+background-color: #b58863;
+background-size: cover;
+}
+.chess-board .dark:hover {
+cursor: pointer;
+}
+.opponents {
+flex: 1;
+margin-left: 20px;
+display: flex;
+flex-direction: column;
+justify-content: center;
+}
+.opponent {
+display: flex;
+align-items: center;
+background-color: white;
+padding: 10px;
+border-radius: 10px;
+box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+margin-bottom: 20px;
+}
+.opponent img {
+border-radius: 50%;
+width: 80px;
+height: 80px;
+margin-right: 20px;
+}
+.opponent .info {
+display: flex;
+flex-direction: column;
+}
+.opponent .info h3 {
+margin: 0;
+}
+.opponent .info p {
+margin: 5px 0;
+}
