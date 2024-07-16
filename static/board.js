@@ -66,3 +66,31 @@ function loadBoard() {
 }
 
 loadBoard();
+
+const socket = io('http://localhost:5000', {
+        withCredentials: true // Ensure cookies are sent with the connection request
+    });
+
+// On connect, send a request to join a game
+socket.on('connect', () => {
+        // Get the span element
+        var userTokenSpan = document.getElementById('user_token');
+        // Get the custom attribute values
+        var sid = userTokenSpan.getAttribute('user-sid');
+        var id = userTokenSpan.getAttribute('user-id');
+    sessions_details={'sid':sid,'id':id};
+    socket.emit('join_room',sessions_details);
+});
+
+// If opponent found then update frontend and start the game
+socket.on('match_found', (data) => {
+    document.getElementById("opponent-name").innerHTML=data['fullname'];
+    document.getElementById("opponent-country").innerHTML='Country: '+data['country'];
+    document.getElementById("opponent-played").innerHTML='Games Played: '+data['total'];
+    document.getElementById("opponent-won").innerHTML='Games Won: '+data['won'];
+    document.getElementById("opponent-drawn").innerHTML='Games Drawn: '+data['drawn'];
+    document.getElementById("opponent-dp").src='/static/files/'+data['dp'];
+});
+
+
+
