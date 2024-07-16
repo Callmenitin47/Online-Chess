@@ -3,9 +3,14 @@ import mysql.connector as connector
 import bcrypt
 from pymongo import MongoClient
 import random
+from flask_socketio import SocketIO,join_room
+from flask_cors import CORS
+import time
+from flask_session import Session
+import redis
 
-app=Flask(__name__)
-app.secret_key="enufwbqbiuwefbwebfuwergbfyewrgbuewrgbuyrbbwueuwen"
+
+
 sqlDB_username="root"
 sqlDB_password="root"
 sqlDB_host="localhost"
@@ -13,12 +18,48 @@ sqlDB_database="chess"
 client=MongoClient("mongodb://localhost:27017/")
 db=client["chess"]
 match_history=db["games"]
+player_ids=[]
+sessions={}
+
+app = Flask(__name__)
+app.secret_key = "enufwbqbiuwefbwebfuwergbfyewrgbuewrgbuyrbbwueuwen"
+app.config['SESSION_TYPE'] = 'filesystem'
+Session(app)
+socketio = SocketIO(app, manage_session=False, cors_allowed_origins='*')
+cors = CORS(app, resources={r"/socket.io/*": {"origins": "http://localhost:5000"}})
+
+
 
 
 def checkLogin():
 	if session.get('username'):
 		return True
 	return False
+
+def generate_room_id():
+    return str(int(time.time() * 1000))
+
+def playerStats(userid):
+
+	#Total games
+	total_games_query={"$or": [{"player1_id":userid},{"player2_id":userid}]}
+	total=match_history.count_documents(total_games_query)
+
+	#Games won
+	games_won_query={"winner_id":userid}
+	won=match_history.count_documents(games_won_query)
+
+	#Games drawn
+	games_drawn_query={
+		   "$and": [
+		       {"$or": [{"player1_id":userid}, {"player2_id":userid}]},
+		       {"result": "draw"}
+		   ]
+	}
+	drawn=match_history.count_documents(games_drawn_query)
+
+	return total,won,drawn,total-won-drawn
+
 
 def random_filename():
     out=""
@@ -75,8 +116,10 @@ def login():
 	row=cursor.fetchone();
 	if row:
 		if bcrypt.checkpw(password.encode('utf-8'),row[1].encode('utf-8')):
+			socketio.server.environ['session'] = session
 			session['username']=username
 			session['id']=row[0]
+			sessions[session.sid]=session['id']
 			return jsonify({"message":"Login successful"}),200
 		else:
 			return jsonify({"message":"Username/Password is Incorrect"}),401
@@ -167,27 +210,16 @@ def profile():
 		row=cursor.fetchone()
 		user_data['country_rank']=row['country_rank']
 
-		#Total games
-		total_games_query={"$or": [{"player1_id":user_data['id']},{"player2_id":user_data['id']}]}
-		total=match_history.count_documents(total_games_query)
-
-		#Games won
-		games_won_query={"winner_id":user_data['id']}
-		won=match_history.count_documents(games_won_query)
-
-		#Games drawn
-		games_drawn_query={
-		    "$and": [
-		        {"$or": [{"player1_id":user_data['id']}, {"player2_id":user_data['id']}]},
-		        {"result": "draw"}
-		    ]
-		}
-		drawn=match_history.count_documents(games_drawn_query)
+		total,won,drawn,lost=playerStats(userid);
 
 		user_data['total']=total
 		user_data['won']=won
 		user_data['drawn']=drawn
-		user_data['lost']=total-won-drawn
+		user_data['lost']=lost
+
+		userid=session.get('username')
+		print("here\n\n\n\n")
+		print(userid)
 		return render_template('dashboard.html',data=user_data)
 	else:
 		return redirect('/home')
@@ -244,6 +276,81 @@ def updateprofile():
 	
 	return jsonify({'message':'Profile has been sucessfully updated.'})
 
-app.run(debug=True)
+@app.route('/chessboard')
+def chessboard():
+	if checkLogin()==True:
+		data=dict()
+		userid=session.get('id')
+		username=session.get('username')
+		connection=get_db_connection()
+		cursor=connection.cursor(dictionary=True)
+		cursor.execute("SELECT * FROM users WHERE username=%s and id=%s",(username,userid,))
+		row=cursor.fetchone();
+
+		total,won,drawn,lost=playerStats(userid)
+
+		data['fullname']=row['fullname']
+		data['country']=row['country']
+		data['dp']=row['DP']
+		data['total']=total
+		data['won']=won
+		data['drawn']=drawn
+		data['lost']=lost
+		data['sid']=session.sid
+		data['id']=session.get('id')
+
+		return render_template('chessboard.html',data=data)
+	return redirect('/home')
+
+def find_match(user_id):
+	user_id=int(user_id)
+	global player_ids
+	print(player_ids)
+	if len(player_ids)==0:
+		player_ids.append(user_id)
+	else:
+		room_id = generate_room_id()
+		opponent_id = player_ids.pop(0)
+		connection=get_db_connection()
+		cursor=connection.cursor(dictionary=True)
+		player1=dict()
+		cursor.execute("SELECT * FROM users WHERE id=%s",(user_id,))
+		row=cursor.fetchone();
+		print(user_id)
+		total,won,drawn,lost=playerStats(user_id)
+		player1['fullname']=row['fullname']
+		player1['country']=row['country']
+		player1['dp']=row['DP']
+		player1['total']=total
+		player1['won']=won
+		player1['drawn']=drawn
+		player1['lost']=lost
+
+		player2=dict()
+		cursor.execute("SELECT * FROM users WHERE id=%s",(opponent_id,))
+		row=cursor.fetchone();
+		total,won,drawn,lost=playerStats(opponent_id)
+		player2['fullname']=row['fullname']
+		player2['country']=row['country']
+		player2['dp']=row['DP']
+		player2['total']=total
+		player2['won']=won
+		player2['drawn']=drawn
+		player2['lost']=lost
+
+		socketio.emit('match_found', player2, room=user_id)
+		socketio.emit('match_found', player1, room=opponent_id)
+ 
+
+
+@socketio.on('join_room')
+def join(user_session): 
+	if sessions[user_session['sid']] !=	int(user_session['id']):
+		return False
+	join_room(int(user_session['id']))
+	session['id']=user_session['id']
+	find_match(user_session['id'])
+
+socketio.run(app,debug=True)
 
 
