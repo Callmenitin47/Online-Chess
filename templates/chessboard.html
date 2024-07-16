@@ -6,36 +6,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Online Chess Game</title>
     <link rel="stylesheet" href="../static/style.css">
+    <script src="/static/socket.io.js"></script>
 </head>
 
-<body>
-    <div class="container">
+<body class="dashboard-body">
+    <div class="chess-container">
         <div class="chess-board" id="chess-board-window">
         </div>
         <div class="opponents">
             <div class="opponent">
-                <img src="avatar.jpg" alt="Player 1">
+                <img src="/static/files/{{data.dp}}" alt="Player 1">
                 <div class="info">
-                    <h3>Player 1</h3>
-                    <p>Country: USA</p>
-                    <p>Games Played: 150</p>
-                    <p>Games Won: 100</p>
-                    <p>Games Drawn: 20</p>
+                    <h3>{{data.fullname}}</h3>
+                    <p>Country: {{data.country}}</p>
+                    <p>Games Played: {{data.total}}</p>
+                    <p>Games Won: {{data.won}}</p>
+                    <p>Games Drawn: {{data.drawn}}</p>
                 </div>
             </div>
             <div class="opponent">
-                <img src="avatar.jpg" alt="Player 2">
+                <img src="/static/files/avatar.jpg" alt="Player 2" id="opponent-dp">
                 <div class="info">
-                    <h3>Player 2</h3>
-                    <p>Country: UK</p>
-                    <p>Games Played: 200</p>
-                    <p>Games Won: 130</p>
-                    <p>Games Drawn: 30</p>
+                    <h3 id="opponent-name">Waiting for opponent........</h3>
+                    <p id="opponent-country">Country: --</p>
+                    <p id="opponent-played">Games Played: --</p>
+                    <p id="opponent-won">Games Won: --</p>
+                    <p id="opponent-drawn">Games Drawn: --</p>
                 </div>
             </div>
         </div>
     </div>
     <script src="../static/board.js"></script>
+    <span user-sid={{data.sid}} user-id="{{data.id}}" id="user_token"></span>
 </body>
 
 </html>
