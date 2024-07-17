@@ -5,6 +5,24 @@ display: flex;
 justify-content: center;
 align-items: center;
 height: 100vh;
+background: linear-gradient(
+45deg,
+#999 25%,
+transparent 25%,
+transparent 75%,
+#999 75%,
+#999
+),
+linear-gradient(
+45deg,
+#999 25%,
+transparent 25%,
+transparent 75%,
+#999 75%,
+#999
+);
+background-size: 120px 120px;
+background-position: 0 0, 60px 60px;
 }
 .container {
 background-color: #fff;
@@ -198,10 +216,11 @@ Chess board styling
 */
 
 
-.container {
+.chess-container {
 display: flex;
 width: 90vw;
 height: 90vh;
+background-color: #fff;
 }
 .chess-board {
 flex: 1;
@@ -229,6 +248,12 @@ background-size: cover;
 .chess-board .dark:hover {
 cursor: pointer;
 }
+
+.chess-board .box-clicked
+{
+background-color:rgb(135,217,22);
+}
+
 .opponents {
 flex: 1;
 margin-left: 20px;
