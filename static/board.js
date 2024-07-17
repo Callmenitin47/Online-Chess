@@ -6,6 +6,7 @@ function loadBoard() {
             var box = document.createElement('div');
             box.setAttribute('row', i + 1);
             box.setAttribute('col', j + 1);
+            box.addEventListener('click',boxClicked);
 
             if (i % 2 == 0) {
                 if (j % 2 == 0) {
@@ -90,7 +91,35 @@ socket.on('match_found', (data) => {
     document.getElementById("opponent-won").innerHTML='Games Won: '+data['won'];
     document.getElementById("opponent-drawn").innerHTML='Games Drawn: '+data['drawn'];
     document.getElementById("opponent-dp").src='/static/files/'+data['dp'];
+    socket.emit('join_match',{'room_id':data['room_id']})
 });
 
+var source_selected=false;
+var selected_row=-1;
+var selected_col=-1;
+var selected_box;
+
+function boxClicked(event)
+{
+    var clickedElement=event.target;
+
+    if(source_selected==false)
+    {
+        source_selected=true;
+        selected_row=clickedElement.getAttribute('row');
+        selected_col=clickedElement.getAttribute('col');
+        selected_box=clickedElement;
+        clickedElement.classList.add('box-clicked');
+    }
+    else{
+        source_selected=false;
+        selected_box.classList.remove('box-clicked');
+        selected_dest_row=clickedElement.getAttribute('row');
+        selected_dest_col=clickedElement.getAttribute('col');
+        var move={'r1':selected_row,'c1':selected_col,'r2':selected_dest_row,'c2':selected_dest_col}
+        socket.emit('move',move);
+    }
+
+}
 
 
