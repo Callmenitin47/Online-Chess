@@ -20,15 +20,31 @@ db=client["chess"]
 match_history=db["games"]
 player_ids=[]
 sessions={}
+ongoing_matches={}
 
 app = Flask(__name__)
 app.secret_key = "enufwbqbiuwefbwebfuwergbfyewrgbuewrgbuyrbbwueuwen"
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
-socketio = SocketIO(app, manage_session=False, cors_allowed_origins='*')
+socketio = SocketIO(app, manage_session=True, cors_allowed_origins='*')
 cors = CORS(app, resources={r"/socket.io/*": {"origins": "http://localhost:5000"}})
 
 
+class Match:
+	def __init__(self,id1,id2):
+		self.id1=id1
+		self.id2=id2
+		self.turn=random.randint(0,1);
+		self.board=[
+            ["r", "n", "b", "q", "k", "b", "n", "r"],
+            ["p", "p", "p", "p", "p", "p", "p", "p"],
+            ["", "", "", "", "", "", "", ""],
+            ["", "", "", "", "", "", "", ""],
+            ["", "", "", "", "", "", "", ""],
+            ["", "", "", "", "", "", "", ""],
+            ["P", "P", "P", "P", "P", "P", "P", "P"],
+            ["R", "N", "B", "Q", "K", "B", "N", "R"]
+        ]
 
 
 def checkLogin():
@@ -218,8 +234,6 @@ def profile():
 		user_data['lost']=lost
 
 		userid=session.get('username')
-		print("here\n\n\n\n")
-		print(userid)
 		return render_template('dashboard.html',data=user_data)
 	else:
 		return redirect('/home')
@@ -302,10 +316,15 @@ def chessboard():
 		return render_template('chessboard.html',data=data)
 	return redirect('/home')
 
+def create_match(id1,id2,room_id):
+	match=Match(id1,id2)
+	ongoing_matches[room_id]=match
+
+
+
 def find_match(user_id):
 	user_id=int(user_id)
 	global player_ids
-	print(player_ids)
 	if len(player_ids)==0:
 		player_ids.append(user_id)
 	else:
@@ -316,7 +335,6 @@ def find_match(user_id):
 		player1=dict()
 		cursor.execute("SELECT * FROM users WHERE id=%s",(user_id,))
 		row=cursor.fetchone();
-		print(user_id)
 		total,won,drawn,lost=playerStats(user_id)
 		player1['fullname']=row['fullname']
 		player1['country']=row['country']
@@ -325,6 +343,7 @@ def find_match(user_id):
 		player1['won']=won
 		player1['drawn']=drawn
 		player1['lost']=lost
+		player1['room_id']=room_id
 
 		player2=dict()
 		cursor.execute("SELECT * FROM users WHERE id=%s",(opponent_id,))
@@ -337,9 +356,13 @@ def find_match(user_id):
 		player2['won']=won
 		player2['drawn']=drawn
 		player2['lost']=lost
+		player2['room_id']=room_id
+
+		create_match(user_id,opponent_id,room_id)
 
 		socketio.emit('match_found', player2, room=user_id)
 		socketio.emit('match_found', player1, room=opponent_id)
+
  
 
 
@@ -350,6 +373,11 @@ def join(user_session):
 	join_room(int(user_session['id']))
 	session['id']=user_session['id']
 	find_match(user_session['id'])
+
+@socketio.on('join_match')
+def join_match(match_details):
+	session['room_id']=match_details['room_id']
+	join_room(match_details['room_id'])
 
 socketio.run(app,debug=True)
 
