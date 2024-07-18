@@ -94,6 +94,14 @@ socket.on('match_found', (data) => {
     socket.emit('join_match',{'room_id':data['room_id']})
 });
 
+socket.on('move_update', (data) => {
+    if(data['status']=='valid')
+    {
+        document.querySelector('[row="'+data['dest_row']+'"][col="'+data['dest_col']+'"]').style.backgroundImage =data['piece'];
+        document.querySelector('[row="'+data['source_row']+'"][col="'+data['source_col']+'"]').style.backgroundImage ="";
+    }
+});
+
 var source_selected=false;
 var selected_row=-1;
 var selected_col=-1;
