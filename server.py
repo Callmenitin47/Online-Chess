@@ -8,7 +8,7 @@ from flask_cors import CORS
 import time
 from flask_session import Session
 import redis
-
+import copy
 
 
 sqlDB_username="root"
@@ -50,9 +50,11 @@ class Match:
 	def __init__(self,id1,id2):
 		self.players=[id1,id2]
 		self.turn=random.randint(0,1);
+		self.awaiting_promotion=False
+		self.latest_move=""
 		self.board=[
             ["r", "n", "b", "q", "k", "b", "n", "r"],
-            ["q", "q", "q", "p", "p", "p", "p", "p"],
+            ["p", "p", "p", "p", "p", "p", "p", "p"],
             ["", "", "", "", "", "", "", ""],
             ["", "", "", "", "", "", "", ""],
             ["", "", "", "", "", "", "", ""],
@@ -194,6 +196,7 @@ def changepassword():
 
 @app.route('/profile')
 def profile():
+	print(sessions)
 	if checkLogin()==True:
 		connection=get_db_connection()
 		cursor=connection.cursor(dictionary=True)
@@ -346,7 +349,14 @@ def find_match(user_id):
 		player_ids.append(user_id)
 	else:
 		room_id = generate_room_id()
-		opponent_id = player_ids.pop(0)
+		if player_ids[0]==user_id:
+			if len(player_ids)>1:
+				opponent_id=player_ids.pop(1)
+			else:
+				return
+		else:
+			opponent_id=player_ids.pop(0)
+
 		connection=get_db_connection()
 		cursor=connection.cursor(dictionary=True)
 		player1=dict()
@@ -382,48 +392,88 @@ def find_match(user_id):
 
 @socketio.on('join_room')
 def join(user_session): 
-	if sessions[user_session['sid']] !=	int(user_session['id']):
-		return False
+	print(sessions)
+	#if sessions[user_session['sid']] !=	int(user_session['id']):
+	#	return False
 	join_room(int(user_session['id']))
 	session['id']=int(user_session['id'])
 	find_match(user_session['id'])
 
+@socketio.on('disconnect')
+def disconnect(): 
+	if 'room_id' in session:
+		match=ongoing_matches[session['room_id']]
+		winner=match.players[0]
+		if session['id']==match.players[0]:
+			winner=match.players[1]
+		socketio.emit('match_ended',{'status':'You have won the game as opponent has left'},room=winner)
+		save_game(match.players[0],match.players[1],winner,"finished")
+		del ongoing_matches[session['room_id']]
+		del session['room_id']
+		player_ids.remove(int(session['id']))
+
+@socketio.on('resign')
+def resign(): 
+	if 'room_id' in session:
+		match=ongoing_matches[session['room_id']]
+		winner=match.players[0]
+		if session['id']==match.players[0]:
+			winner=match.players[1]
+		socketio.emit('match_ended',{'status':'You have won the game as opponent has left'},room=winner)
+		save_game(match.players[0],match.players[1],winner,"finished")
+		del ongoing_matches[session['room_id']]
+		del session['room_id']
+
 @socketio.on('join_match')
 def join_match(match_details):
 	session['room_id']=match_details['room_id']
+	match=ongoing_matches[session['room_id']]
+	opponent=1
+	if match.turn==1:
+		opponent=0
+	
+	socketio.emit('turn',{'turn':'Your turn'},room=int(match.players[match.turn]))
+	socketio.emit('turn',{'turn':'Opponents turn'},room=int(match.players[opponent]))
 	join_room(match_details['room_id'])
 
 
 def validate_pawn(board,source,dest,player):
 
 	if player==0 and board[source[0]][source[1]]=='P':
-		return False
+		return False,False
 	if player==1 and board[source[0]][source[1]]=='p':
-		return False
+		return False,False
+
+	valid=False
+	promote=False;
 
 	if board[source[0]][source[1]]=='p':
-		if dest[0]==source[0]+1 and board[source[0]+1][source[1]]=="":
-			return True
-		elif dest[0]==source[0]+2 and board[source[0]+1][source[1]]=="" and board[source[0]+2][source[1]]=="":
-			return True
+		if dest[0]==source[0]+1 and dest[1]==source[1] and board[source[0]+1][source[1]]=="":
+			valid=True
+		elif dest[0]==source[0]+2 and dest[1]==source[1] and board[source[0]+1][source[1]]=="" and board[source[0]+2][source[1]]=="":
+			valid=True
 		elif dest[0]==source[0]+1 and dest[1]==source[1]-1 and board[source[0]+1][source[1]-1] in player2:
-			return True
+			valid=True
 		elif dest[0]==source[0]+1 and dest[1]==source[1]+1 and board[source[0]+1][source[1]+1] in player2:
-			return True
+			valid=True
 		else:	
-			return False
+			valid=False
+		if dest[0]==7:
+			promote=True
 	else:
-		if dest[0]==source[0]-1 and board[source[0]-1][source[1]]=="":
-			return True
-		elif dest[0]==source[0]-2 and board[source[0]-1][source[1]]=="" and board[source[0]-2][source[1]]=="":
-			return True
+		if dest[0]==source[0]-1 and dest[1]==source[1] and board[source[0]-1][source[1]]=="":
+			valid=True
+		elif dest[0]==source[0]-2 and dest[1]==source[1] and board[source[0]-1][source[1]]=="" and board[source[0]-2][source[1]]=="":
+			valid=True
 		elif dest[0]==source[0]-1 and dest[1]==source[1]-1 and board[source[0]-1][source[1]-1] in player1:
-			return True
-		elif dest[0]==source[0]-1 and dest[1]==source[1]+1 and board[source[0]-1][source[1]+1] in player1:
-			return True
+			valid=True
+		elif dest[0]==source[0]-1 and dest[1]==source[1]+1  and board[source[0]-1][source[1]+1] in player1:
+			valid=True
 		else:	
-			return False
-	return False
+			valid=True
+		if dest[0]==0:
+			promote=True
+	return valid,promote
 
 
 
@@ -482,10 +532,6 @@ def validate_bishop(board,source,dest,player):
 		enemies=player2
 	else: 
 		enemies=player1
-
-	print("bishop")
-	print(player)
-	print(enemies)
 
 	diff=int(abs(dest[0]-source[0])/abs(dest[1]-source[1]))
 
@@ -602,10 +648,336 @@ def validate_rook(board,source,dest,player):
 		start_row=start_row+row_dir
 		start_col=start_col+col_dir
 
+def save_game(id1,id2,winner,result):
+	data={}
+	data['player1_id']=id1
+	data['player2_id']=id2
+	data['winner_id']=winner
+	data['result']=result
+	match_history.insert_one(data)
+
+	connection=get_db_connection()
+	cursor=connection.cursor(dictionary=True)
+
+	cursor.execute("SELECT elo_rating FROM users WHERE id=%s",(id1,))
+	id1_elorating=int(cursor.fetchone()['elo_rating'])
+
+	cursor.execute("SELECT elo_rating FROM users WHERE id=%s",(id2,))
+	id2_elorating=int(cursor.fetchone()['elo_rating'])
+
+	if winner==id1:
+		r_a=1
+		r_b=0
+	elif winner==id2:
+		r_a=0
+		r_b=1
+	else:
+		r_a=0.5
+		r_b=0.5
+
+	k=32
+
+    # Calculate the expected scores
+	expected_A=1/(1+10**((r_b-r_a)/400))
+	expected_B=1/(1+10**((r_a-r_b)/400))
+    
+    # Calculate the new ratings
+	new_rating_A=id1_elorating+k*(r_a-expected_A)
+	new_rating_B=id2_elorating+k*((1-r_a)-expected_B)
+
+	cursor.execute("UPDATE users SET elo_rating =%s WHERE id=%s",(new_rating_A,id1,))
+	cursor.execute("UPDATE users SET elo_rating =%s WHERE id=%s",(new_rating_B,id2,))
+
+	connection.commit()
+
+
+def in_range(row,col):
+	if row >=0 and col>=0 and row<8 and col<8:
+		return True
+	return False
+
+
+def get_rook_moves(moves,row_num,col_num,player,board,king,attacker):
+	directions=[(1,0),(-1,0),(0,1),(0,-1)]
+	for i in range(len(directions)):
+		row=row_num
+		col=col_num	
+		row=row+directions[i][0]
+		col=col+directions[i][1]
+		while True:
+			if row >=0 and col>=0 and row<8 and col<8:
+				if board[row][col]==king:
+					moves.add((row,col))
+					attacker.append((row_num,col_num))
+					break
+				elif board[row][col] in player1 or board[row][col] in player2:
+					moves.add((row,col))
+					break
+				elif board[row][col]=="":
+					moves.add((row,col))
+					row=row+directions[i][0]
+					col=col+directions[i][1]
+				else:
+					break
+			else:
+				break
+
+def get_queen_moves(moves,row_num,col_num,player,board,king,attacker):
+	directions=[(1,0),(-1,0),(0,1),(0,-1),(1,1),(1,-1),(-1,1),(-1,-1)]
+	for i in range(len(directions)):
+		row=row_num
+		col=col_num		
+		row=row+directions[i][0]
+		col=col+directions[i][1]
+		while True:
+			if row >=0 and col>=0 and row<8 and col<8:
+				if board[row][col]==king:
+					moves.add((row,col))
+					attacker.append((row_num,col_num))
+					break
+				elif board[row][col] in player1 or board[row][col] in player2:
+					moves.add((row,col))
+					break
+				elif board[row][col]=="":
+					moves.add((row,col))
+					row=row+directions[i][0]
+					col=col+directions[i][1]	
+				else:
+					break
+			else:
+				break
+
+def get_bishop_moves(moves,row_num,col_num,player,board,king,attacker):
+	directions=[(1,1),(1,-1),(-1,1),(-1,-1)]
+	for i in range(len(directions)):
+		row=row_num
+		col=col_num		
+		row=row+directions[i][0]
+		col=col+directions[i][1]
+		while True:
+			if row >=0 and col>=0 and row<8 and col<8:
+				if board[row][col]==king:
+					moves.add((row,col))
+					attacker.append((row_num,col_num))
+					break
+				elif board[row][col] in player1 or board[row][col] in player2:
+					moves.add((row,col))
+					break
+				elif board[row][col]=="":
+					moves.add((row,col))
+					row=row+directions[i][0]
+					col=col+directions[i][1]
+				else:
+					break
+			else:
+				break
+
+def get_knight_moves(moves,row_num,col_num,player,board,king,attacker):
+	directions=[(-2,1),(-2,-1),(-1,2),(-1,-2),(2,-1),(2,1),(1,-2),(1,2)]
+	for i in range(len(directions)):
+		row=row_num
+		col=col_num		
+		row=row+directions[i][0]
+		col=col+directions[i][1]
+		if row >=0 and col>=0 and row<8 and col<8:
+			if board[row][col]==king:
+				attacker.append((row_num,col_num))
+				moves.add((row,col))
+			elif board[row][col]=="" or board[row][col] in player1 or board[row][col] in player2:
+				moves.add((row,col))
+			else:
+				continue
+
+
+def get_king_moves(moves,row_num,col_num,player,board,king,attacker):
+	directions=[(-1,-1),(-1,0),(-1,1),(1,-1),(1,0),(1,1),(0,-1),(0,1)]
+	for i in range(len(directions)):
+		row=row_num
+		col=col_num		
+		row=row+directions[i][0]
+		col=col+directions[i][1]
+		if row >=0 and col>=0 and row<8 and col<8:
+			if board[row][col]==king:
+				attacker.append((row_num,col_num))
+				moves.add((row,col))
+			elif board[row][col]=="" or board[row][col] in player1 or board[row][col] in player2:
+				moves.add((row,col))
+			else:
+				continue
+def get_pawn_moves(moves,row_num,col_num,player,board,king,dr,attacker):
+	if in_range(row_num+dr,col_num-1) and (board[row_num+dr][col_num-1]=="" or board[row_num+dr][col_num-1] in player):
+		moves.add((row_num+dr,col_num-1))
+		if board[row_num+dr][col_num-1]==king:
+			attacker.append((row_num,col_num))
+
+	if in_range(row_num+dr,col_num+1) and (board[row_num+dr][col_num+1]=="" or board[row_num+dr][col_num+1] in player):
+		moves.add((row_num+dr,col_num+1))
+		if board[row_num+dr][col_num+1]==king:
+			attacker.append((row_num,col_num))
+
+def get_game_status(board,turn):
+
+	def get_pos(piece):
+		for i in range(8):
+			for j in range(8):
+				if board[i][j]==piece:
+					return i,j
+	status=[-1,-1]
+	black_moves=set()
+	white_moves=set()
+	white_attackers=[]
+	black_attackers=[]
+
+	for i in range(8):
+		for j in range(8):
+			if board[i][j]=="r":
+				get_rook_moves(black_moves,i,j,player1,board,"K",black_attackers)
+			elif board[i][j]=="R":
+				get_rook_moves(white_moves,i,j,player2,board,"k",white_attackers)
+			elif board[i][j]=="q":
+				get_queen_moves(black_moves,i,j,player1,board,"K",black_attackers)
+			elif board[i][j]=="Q":
+				get_queen_moves(white_moves,i,j,player2,board,"k",white_attackers)
+			elif board[i][j]=="b":
+				get_bishop_moves(black_moves,i,j,player1,board,"K",black_attackers)
+			elif board[i][j]=="B":
+				get_bishop_moves(white_moves,i,j,player2,board,"k",white_attackers)
+			elif board[i][j]=="n":
+				get_knight_moves(black_moves,i,j,player1,board,"K",black_attackers)
+			elif board[i][j]=="N":
+				get_knight_moves(white_moves,i,j,player2,board,"k",white_attackers)
+			elif board[i][j]=="k":
+				get_king_moves(black_moves,i,j,player1,board,"K",black_attackers)
+			elif board[i][j]=="K":
+				get_king_moves(white_moves,i,j,player2,board,"k",white_attackers)
+			elif board[i][j]=="p":
+				get_pawn_moves(black_moves,i,j,player2,board,"K",1,black_attackers)
+			elif board[i][j]=="P":
+				get_pawn_moves(white_moves,i,j,player1,board,"k",-1,white_attackers)
+			else:
+				continue
+
+	def is_checkmate(pos,enemies_moves,player):
+		if in_range(pos[0]-1,pos[1]-1) and (pos[0]-1,pos[1]-1) not in enemies_moves and board[pos[0]-1][pos[1]-1] not in player:
+			return False
+		elif in_range(pos[0]-1,pos[1]) and (pos[0]-1,pos[1]) not in enemies_moves and board[pos[0]-1][pos[1]] not in player:
+			return False
+		elif in_range(pos[0]-1,pos[1]+1) and (pos[0]-1,pos[1]+1) not in enemies_moves and board[pos[0]-1][pos[1]+1] not in player:
+			return False
+		elif in_range(pos[0],pos[1]-1) and (pos[0],pos[1]-1) not in enemies_moves and board[pos[0]][pos[1]-1] not in player:
+			return False
+		elif in_range(pos[0],pos[1]+1) and (pos[0],pos[1]+1) not in enemies_moves and board[pos[0]][pos[1]+1] not in player:
+			return False
+		elif in_range(pos[0]+1,pos[1]-1) and (pos[0]+1,pos[1]-1) not in enemies_moves and board[pos[0]+1][pos[1]-1] not in player:
+			return False
+		elif in_range(pos[0]+1,pos[1]) and (pos[0]+1,pos[1]) not in enemies_moves and board[pos[0]+1][pos[1]] not in player:
+			return False
+		elif in_range(pos[0]+1,pos[1]+1) and (pos[0]+1,pos[1]+1) not in enemies_moves and board[pos[0]+1][pos[1]+1] not in player:
+			return False
+		else:
+			return True
+
+
+	black_king_row,black_king_col=get_pos('k')
+	white_king_row,white_king_col=get_pos('K')
+
+    # Checking for check or checkmate for black pieces
+
+	if (black_king_row,black_king_col) in white_moves:
+		status[0]=1
+		if turn==0:
+			return
+		else:
+			enemy_row,enemy_col=white_attackers[0][0],white_attackers[0][1]
+			if (enemy_row,enemy_col) in black_moves and (enemy_row,enemy_col) not in white_moves and not (is_checkmate((black_king_row,black_king_col),white_moves,player1)):
+				status[0]=1
+			else:
+				status[0]=2
+
+
+	if (white_king_row,white_king_col) in black_moves: 
+		if turn==1:
+			status[1]=1
+			return
+		else:
+			enemy_row,enemy_col=black_attackers[0][0],black_attackers[0][1]
+			if (enemy_row,enemy_col) in white_moves and (enemy_row,enemy_col) not in black_moves and not (is_checkmate((white_king_row,white_king_col),black_moves,player2)):
+				status[1]=1
+			else:
+				status[1]=2
+
+	return status
+
+
+def move_update(move_details,match,source_row,source_col,dest_row,dest_col,destination_piece,status):
+	data={}
+	data['status']='valid'
+	data['dest_row']=move_details['r2']
+	data['dest_col']=move_details['c2']
+	data['source_row']=move_details['r1']
+	data['source_col']=move_details['c1']
+	data['piece']=pieces[destination_piece]
+	ongoing_matches[session['room_id']].board[dest_row][dest_col]=destination_piece
+	ongoing_matches[session['room_id']].board[source_row][source_col]=""
+	prev_turn=match.turn
+	turn_now=-1
+	if match.turn==0:
+		ongoing_matches[session['room_id']].turn=1
+		turn_now=1
+	else:
+		ongoing_matches[session['room_id']].turn=0
+		turn_now=0
+	socketio.emit('move_update',data,room=session['room_id'])
+
+	if status[ongoing_matches[session['room_id']].turn]==1:
+		socketio.emit('turn',{'turn':'Your are checked'},room=int(match.players[turn_now]))
+	elif status[ongoing_matches[session['room_id']].turn]==2:
+		socketio.emit('match_ended',{'status':'You have lost the game'},room=int(match.players[turn_now]))
+		socketio.emit('match_ended',{'status':'You have won the game'},room=int(match.players[prev_turn]))
+		save_game(match.players[0],match.players[1],match.players[match.turn],"finished")
+		del ongoing_matches[session['room_id']]
+		del session['room_id']
+	else:
+		socketio.emit('turn',{'turn':'Your turn'},room=int(match.players[turn_now]))
+		socketio.emit('turn',{'turn':'Opponents turn'},room=int(match.players[prev_turn]))
+
+@socketio.on('pawn_promotion')
+def pawn_promoted(data):
+	if 'room_id' in session:
+		piece=data['piece']
+		match=ongoing_matches[session['room_id']]
+		param=match.latest_move
+		if session['id']==match.awaiting_promotion:
+			if piece=="queen":
+				if(session['id']==match.players[0]):
+					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'q',param[6])
+				else:
+					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'Q',param[6])
+			if piece=="rook":
+				if(session['id']==match.players[0]):
+					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'r',param[6])
+				else:
+					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'R',param[6])
+			if piece=="knight":
+				if(session['id']==match.players[0]):
+					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'k',param[6])
+				else:
+					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'K',param[6])
+			if piece=="bishop":
+				if(session['id']==match.players[0]):
+					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'b',param[6])
+				else:
+					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'B',param[6])
+
+
 
 
 @socketio.on('move')
 def move(move_details):
+	if 'room_id' not in session:
+		socketio.emit('move_update',{'status':'Not a valid move'},room=session['id'])
+		return
+
 	match=ongoing_matches[session['room_id']]
 	source_row=int(move_details['r1'])-1
 	source_col=int(move_details['c1'])-1
@@ -621,6 +993,8 @@ def move(move_details):
 	cond3=False
 	#source and destination same
 	cond4=dest_row==source_row and dest_col==source_col 
+	#Checking if any player needs to promote his pawn before game proceeds
+	cond5=match.awaiting_promotion==-1
 
 	if match.turn==0:
 		if (match.board[source_row][source_col] not in ['p','n','r','k','q','b']):
@@ -636,13 +1010,13 @@ def move(move_details):
 
 	#print(match.board)
 
-	if  cond1 or cond2 or cond3 or cond4:
-		print("no valid move")
+	if  cond1 or cond2 or cond3 or cond4 or cond5:
 		return socketio.emit('move_update',{'status':'Not a valid move'},room=session['id'])
 	else:
 		move_valid=False
+		promotion=False
 		if match.board[source_row][source_col] in ['p','P']:
-			move_valid=validate_pawn(match.board,[source_row,source_col],[dest_row,dest_col],match.turn)
+			move_valid,promotion=validate_pawn(match.board,[source_row,source_col],[dest_row,dest_col],match.turn)
 		elif match.board[source_row][source_col] in ['r','R']:
 			move_valid=validate_rook(match.board,[source_row,source_col],[dest_row,dest_col],match.turn)
 		elif match.board[source_row][source_col] in ['k','K']:
@@ -654,23 +1028,27 @@ def move(move_details):
 		elif match.board[source_row][source_col] in ['b','B']:
 			move_valid=validate_bishop(match.board,[source_row,source_col],[dest_row,dest_col],match.turn)
 
+		temp_board=copy.deepcopy(match.board)
+		temp_board[dest_row][dest_col]=temp_board[source_row][source_col]
+		temp_board[source_row][source_col]=""
+		for i in range(len(match.board)):
+			print(temp_board[i])
+		status=get_game_status(temp_board,match.turn)
+
+		if (match.turn==0 and status[0]!=-1) or (match.turn==1 and status[1]!=-1):
+			move_valid=False
+
 		if move_valid==True:
-			data={}
-			data['status']='valid'
-			data['dest_row']=move_details['r2']
-			data['dest_col']=move_details['c2']
-			data['source_row']=move_details['r1']
-			data['source_col']=move_details['c1']
-			data['piece']=pieces[match.board[source_row][source_col]]
-			ongoing_matches[session['room_id']].board[dest_row][dest_col]=match.board[source_row][source_col]
-			ongoing_matches[session['room_id']].board[source_row][source_col]=""
-			if match.turn==0:
-				ongoing_matches[session['room_id']].turn=1
-			else:
-				ongoing_matches[session['room_id']].turn=0
-			return socketio.emit('move_update',data,room=session['room_id'])
+			destination_piece=ongoing_matches[session['room_id']].board[source_row][source_col]
+			if promotion==True:
+				ongoing_matches[session['room_id']].awaiting_promotion=session['id']
+				ongoing_matches[session['room_id']].latest_move=(move_details,match,source_row,source_col,dest_row,dest_col,status,)
+				socketio.emit('pawn_promotion',room=session['id'])
+				return
+			destination_piece=ongoing_matches[session['room_id']].board[source_row][source_col]
+			move_update(move_details,match,source_row,source_col,dest_row,dest_col,destination_piece,status)
 		else:
-			return socketio.emit('move_update',{'status':'Not a valid move'},room=session['id'])
+			return socketio.emit('move_update',{'status':'Not a valid move'},room=session['id'])	
 
 
 socketio.run(app,debug=True)
