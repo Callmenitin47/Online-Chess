@@ -102,6 +102,19 @@ socket.on('move_update', (data) => {
     }
 });
 
+socket.on('match_ended', (data) => {
+    document.getElementById('winner-message').innerHTML=data['status'];
+    document.getElementById('winner-popup').style.display="block";
+});
+
+socket.on('turn', (data) => {
+    document.getElementById('turn-message').innerHTML=data['turn'];
+});
+
+socket.on('pawn_promotion', (data) => {
+    document.getElementById('promotion-menu').style.display='flex';
+});
+
 var source_selected=false;
 var selected_row=-1;
 var selected_col=-1;
@@ -129,5 +142,27 @@ function boxClicked(event)
     }
 
 }
+
+function newGame() {
+    window.location.href='/chessboard';
+}
+
+function resignGame() {
+    document.getElementById('winner-message').innerHTML="You have resigned from the game!";
+    document.getElementById('winner-popup').style.display="block";
+}
+
+function promotePawn(newPiece) {
+    socket.emit('pawn_promotion', { 'piece': newPiece });
+    document.getElementById('promotion-menu').style.display='None';
+}
+
+// Add click handlers for the promotion pieces
+document.querySelectorAll('.promotion-piece').forEach(piece => {
+    piece.addEventListener('click', (event) => {
+        promotePawn(event.target.getAttribute('piece'));
+    });
+});
+
 
 
