@@ -10,6 +10,13 @@
 </head>
 
 <body class="dashboard-body">
+    <div id="promotion-menu" class="promotion-menu hidden">
+    <img id="selected-queen" src="/static/files/pieces/white_queen.png" alt="Queen" class="promotion-piece" piece="queen">
+    <img id="selected-rook" src="/static/files/pieces/white_rook.png" alt="Rook" class="promotion-piece"piece="rook">
+    <img id="selected-bishop" src="/static/files/pieces/white_bishop.png" alt="Bishop" class=" promotion-piece" piece="bishop">
+    <img id="selected-knight" src="/static/files/pieces/white_knight.png" alt="Knight" class="promotion-piece" piece="knight">
+    </div>
+
     <div class="chess-container">
         <div class="chess-board" id="chess-board-window">
         </div>
@@ -34,10 +41,19 @@
                     <p id="opponent-drawn">Games Drawn: --</p>
                 </div>
             </div>
+            <button id="resign-button" onclick="resignGame()">Resign</button>
+            <div id="turn-message" style="width:100%:text-align:center"></div>
         </div>
     </div>
     <script src="../static/board.js"></script>
     <span user-sid={{data.sid}} user-id="{{data.id}}" id="user_token"></span>
+
+    <div id="winner-popup" class="popup">
+        <div class="popup-content">
+            <h1 id="winner-message">You have won</h1>
+            <button id="new-match-button" onclick="newGame()">New Match</button>
+        </div>
+    </div>
 </body>
 
 </html>
