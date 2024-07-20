@@ -25,6 +25,8 @@ This project is a real-time, multiplayer chess game developed using Flask for th
 
 ## Database Setup
 
+### MySQL
+
 Create a new MySQL database:
 
 ```
@@ -44,6 +46,20 @@ CREATE TABLE users (
     elo_rating INT NOT NULL DEFAULT 1000
 );
 
+```
+
+### MongoDB
+
+Ensure MongoDB is running.
+Use the following schema for storing match history
+```
+{
+    "_id": ObjectId,
+    "player1_id": Number,
+    "player2_id": Number,
+    "winner_id": Number,
+    "result": String, // "finished", "drawn"
+}
 ```
 ## Future Scope
 
