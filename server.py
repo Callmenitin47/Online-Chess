@@ -50,8 +50,9 @@ class Match:
 	def __init__(self,id1,id2):
 		self.players=[id1,id2]
 		self.turn=random.randint(0,1);
-		self.awaiting_promotion=False
+		self.awaiting_promotion=-1
 		self.latest_move=""
+		self.draw=-1
 		self.board=[
             ["r", "n", "b", "q", "k", "b", "n", "r"],
             ["p", "p", "p", "p", "p", "p", "p", "p"],
@@ -88,7 +89,7 @@ def playerStats(userid):
 	games_drawn_query={
 		   "$and": [
 		       {"$or": [{"player1_id":userid}, {"player2_id":userid}]},
-		       {"result": "draw"}
+		       {"result": "drawn"}
 		   ]
 	}
 	drawn=match_history.count_documents(games_drawn_query)
@@ -402,15 +403,17 @@ def join(user_session):
 @socketio.on('disconnect')
 def disconnect(): 
 	if 'room_id' in session:
-		match=ongoing_matches[session['room_id']]
-		winner=match.players[0]
-		if session['id']==match.players[0]:
-			winner=match.players[1]
-		socketio.emit('match_ended',{'status':'You have won the game as opponent has left'},room=winner)
-		save_game(match.players[0],match.players[1],winner,"finished")
-		del ongoing_matches[session['room_id']]
-		del session['room_id']
-		player_ids.remove(int(session['id']))
+		if session['room_id'] in ongoing_matches:
+			match=ongoing_matches[session['room_id']]
+			winner=match.players[0]
+			if session['id']==match.players[0]:
+				winner=match.players[1]
+			socketio.emit('match_ended',{'status':'You have won the game as opponent has left'},room=winner)
+			save_game(match.players[0],match.players[1],winner,"finished")
+			del ongoing_matches[session['room_id']]
+			del session['room_id']
+			if int(session['id']) in player_ids:
+				player_ids.remove(int(session['id']))
 
 @socketio.on('resign')
 def resign(): 
@@ -953,24 +956,24 @@ def pawn_promoted(data):
 					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'q',param[6])
 				else:
 					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'Q',param[6])
-			if piece=="rook":
+			elif piece=="rook":
 				if(session['id']==match.players[0]):
 					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'r',param[6])
 				else:
 					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'R',param[6])
-			if piece=="knight":
+			elif piece=="knight":
 				if(session['id']==match.players[0]):
 					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'k',param[6])
 				else:
 					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'K',param[6])
-			if piece=="bishop":
+			elif piece=="bishop":
 				if(session['id']==match.players[0]):
 					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'b',param[6])
 				else:
 					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'B',param[6])
-
-
-
+			else:
+				return
+			ongoing_matches[session['room_id']]=-1
 
 @socketio.on('move')
 def move(move_details):
@@ -994,7 +997,7 @@ def move(move_details):
 	#source and destination same
 	cond4=dest_row==source_row and dest_col==source_col 
 	#Checking if any player needs to promote his pawn before game proceeds
-	cond5=match.awaiting_promotion==-1
+	cond5=match.awaiting_promotion!=-1
 
 	if match.turn==0:
 		if (match.board[source_row][source_col] not in ['p','n','r','k','q','b']):
@@ -1048,8 +1051,34 @@ def move(move_details):
 			destination_piece=ongoing_matches[session['room_id']].board[source_row][source_col]
 			move_update(move_details,match,source_row,source_col,dest_row,dest_col,destination_piece,status)
 		else:
-			return socketio.emit('move_update',{'status':'Not a valid move'},room=session['id'])	
+			return socketio.emit('move_update',{'status':'Not a valid move'},room=session['id'])
 
+
+@socketio.on('draw_move')
+def draw_move(data):
+	if 'room_id' in session:
+		player_id=session['id']
+		print("oay")
+		if player_id==ongoing_matches[session['room_id']].draw:
+			match=ongoing_matches[session['room_id']]
+			if data['offer']=='accepted':
+				print("checing offer")
+				socketio.emit('match_ended',{'status':'Game has been drawn'},room=session['room_id'])
+				save_game(match.players[0],match.players[1],-1,"drawn")
+				del ongoing_matches[session['room_id']]
+				del session['room_id']
+			else:
+				ongoing_matches[session['room_id']].draw=-1
+
+@socketio.on('offer_draw')
+def offer_draw():
+	if 'room_id' in session:
+		player_id=session['id']
+		opponent_id=ongoing_matches[session['room_id']].players[0]
+		if player_id==ongoing_matches[session['room_id']].players[0]:
+			opponent_id=ongoing_matches[session['room_id']].players[1]
+		ongoing_matches[session['room_id']].draw=opponent_id
+	socketio.emit('draw_offered',room=int(opponent_id))
 
 socketio.run(app,debug=True)
 
