@@ -63,7 +63,7 @@ Use the following schema for storing match history
 ```
 ## Future Scope
 
-* **Offer Draw**: Allow players to offer a draw to their opponents.
+* **Time Restricted Gamed**: Timed games with different time controls, such as 5-minute and 10-minute games.
 * **AI Opponent:** Implement an AI opponent for players to practice against when no human opponent is available.
 * **Spectator Mode:** Allow other users to watch ongoing games.
 * **Enhanced Statistics:** Track and display detailed statistics for each player, such as win/loss ratio, average game duration, etc.
