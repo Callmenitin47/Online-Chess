@@ -10,6 +10,19 @@
 </head>
 
 <body class="dashboard-body">
+    <div class="popup" id="winner-popup">
+        <div class="popupContent">
+            <p id="winner-message">This is a full screen pop-up!</p>
+            <button class="popupButton" onclick="newGame()">New Match</button>
+        </div>
+    </div>
+    <div class="popup" id="draw-accept-popup">
+        <div class="popupContent">
+            <p>Ooponent has offered a draw</p>
+            <button class="popupButton" onclick="handleYes()">Accept</button>
+            <button class="popupButton" onclick="handleNo()">Reject</button>
+        </div>
+    </div>
     <div id="promotion-menu" class="promotion-menu hidden">
     <img id="selected-queen" src="/static/files/pieces/white_queen.png" alt="Queen" class="promotion-piece" piece="queen">
     <img id="selected-rook" src="/static/files/pieces/white_rook.png" alt="Rook" class="promotion-piece"piece="rook">
@@ -41,19 +54,17 @@
                     <p id="opponent-drawn">Games Drawn: --</p>
                 </div>
             </div>
-            <button id="resign-button" onclick="resignGame()">Resign</button>
+
+            <div class="opponent">
+                <img src="/static/files/flag.png" alt="Resign"  class="bts" id="resign-button">
+                <img src="/static/files/half.png" alt="Draw" class="bts" id="draw-button">
+            </div>
             <div id="turn-message" style="width:100%:text-align:center"></div>
         </div>
-    </div>
-    <script src="../static/board.js"></script>
-    <span user-sid={{data.sid}} user-id="{{data.id}}" id="user_token"></span>
 
-    <div id="winner-popup" class="popup">
-        <div class="popup-content">
-            <h1 id="winner-message">You have won</h1>
-            <button id="new-match-button" onclick="newGame()">New Match</button>
-        </div>
     </div>
+    <span user-sid={{data.sid}} user-id="{{data.id}}" id="user_token"></span>
+    <script src="../static/board.js"></script>
 </body>
 
 </html>
