@@ -104,7 +104,7 @@ socket.on('move_update', (data) => {
 
 socket.on('match_ended', (data) => {
     document.getElementById('winner-message').innerHTML=data['status'];
-    document.getElementById('winner-popup').style.display="block";
+    document.getElementById('winner-popup').style.display="flex";
 });
 
 socket.on('turn', (data) => {
@@ -113,6 +113,10 @@ socket.on('turn', (data) => {
 
 socket.on('pawn_promotion', (data) => {
     document.getElementById('promotion-menu').style.display='flex';
+});
+
+socket.on('draw_offered', (data) => {
+    document.getElementById('draw-accept-popup').style.display='flex';
 });
 
 var source_selected=false;
@@ -149,12 +153,29 @@ function newGame() {
 
 function resignGame() {
     document.getElementById('winner-message').innerHTML="You have resigned from the game!";
-    document.getElementById('winner-popup').style.display="block";
+    document.getElementById('winner-popup').style.display="flex";
 }
 
-function promotePawn(newPiece) {
+function offerDraw() {
+    socket.emit('offer_draw');
+}
+
+function promotePawn(newPiece) 
+{
     socket.emit('pawn_promotion', { 'piece': newPiece });
     document.getElementById('promotion-menu').style.display='None';
+}
+
+function handleYes()
+{
+    socket.emit('draw_move', { 'offer': 'accepted' });
+    document.getElementById('draw-accept-popup').style.display='none';
+}
+
+function handleNo()
+{
+    socket.emit('draw_move', { 'offer': 'rejected' });
+    document.getElementById('draw-accept-popup').style.display='none';
 }
 
 // Add click handlers for the promotion pieces
@@ -163,6 +184,11 @@ document.querySelectorAll('.promotion-piece').forEach(piece => {
         promotePawn(event.target.getAttribute('piece'));
     });
 });
+
+document.getElementById('resign-button').addEventListener('click',resignGame);
+document.getElementById('draw-button').addEventListener('click',offerDraw);
+
+
 
 
 
