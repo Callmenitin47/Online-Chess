@@ -276,6 +276,17 @@ width: 80px;
 height: 80px;
 margin-right: 20px;
 }
+.opponent .bts {
+border-radius: 50%;
+width: 40px;
+height: 40px;
+margin-right: 20px;
+border-radius:0px;
+background-color:white;
+}
+.opponent .bts:hover{
+cursor:pointer;
+}
 .opponent .info {
 display: flex;
 flex-direction: column;
@@ -287,27 +298,6 @@ margin: 0;
 margin: 5px 0;
 }
 
-/* Full-screen popup styling */
-.popup {
-display: none; /* Hidden by default */
-position: fixed;
-top: 0;
-left: 0;
-width: 100%;
-height: 100%;
-background-color: rgba(0, 0, 0, 0.8); /* Semi-transparent background */
-justify-content: center;
-align-items: center;
-}
-
-.popup-content {
-background-color: #fff;
-padding: 20px;
-text-align: center;
-border-radius: 10px;
-box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-}
-
 #new-match-button {
 background-color: #28a745;
 color: white;
@@ -316,16 +306,7 @@ padding: 15px;
 border-radius: 5px;
 cursor: pointer;
 }
-#resign-button {
-background-color: #28a745;
-color: white;
-border: none;
-padding: 10px;
-border-radius: 5px;
-cursor: pointer;
-width:50%;
-margin-left:25%;
-}
+
 
 .promotion-menu {
 position: absolute;
@@ -346,5 +327,39 @@ height: 30px;
 margin: 5px;
 cursor: pointer;
 }
+
+.popup {
+display: none; 
+position: fixed; 
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background-color: rgba(0, 0, 0, 0.8); 
+color: white;
+z-index: 1000; 
+justify-content: center;
+align-items: center;
+}
+
+.popupContent {
+text-align: center;
+}
+
+.popupButton {
+margin: 10px;
+padding: 10px 20px;
+background-color: #4CAF50;
+color: white;
+border: none;
+cursor: pointer;
+border-radius: 5px;
+font-size: 16px;
+}
+
+.popupButton:hover {
+background-color: #45a049;
+}
+
 
 
