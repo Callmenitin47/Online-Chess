@@ -63,6 +63,7 @@ class Match:
             ["P", "P", "P", "P", "P", "P", "P", "P"],
             ["R", "N", "B", "Q", "K", "B", "N", "R"]
         ]
+		self.moved=[[False]*8 for i in range(8)]
 		self.status="ongoing"
 		self.winner=-1
 
@@ -451,9 +452,9 @@ def validate_pawn(board,source,dest,player):
 	promote=False;
 
 	if board[source[0]][source[1]]=='p':
-		if dest[0]==source[0]+1 and dest[1]==source[1] and board[source[0]+1][source[1]]=="":
+		if dest[0]==source[0]+1 and dest[1]==source[1] and board[source[0]+1][source[1]]=="" and board[source[0]+1][source[1]-1]=="" and board[source[0]+1][source[1]+1]=="":
 			valid=True
-		elif dest[0]==source[0]+2 and dest[1]==source[1] and board[source[0]+1][source[1]]=="" and board[source[0]+2][source[1]]=="":
+		elif dest[0]==source[0]+2 and dest[1]==source[1] and source[0]==1 and board[source[0]+1][source[1]]=="" and board[source[0]+2][source[1]]=="" and board[source[0]+1][source[1]-1]=="" and board[source[0]+1][source[1]+1]=="":
 			valid=True
 		elif dest[0]==source[0]+1 and dest[1]==source[1]-1 and board[source[0]+1][source[1]-1] in player2:
 			valid=True
@@ -464,16 +465,16 @@ def validate_pawn(board,source,dest,player):
 		if dest[0]==7:
 			promote=True
 	else:
-		if dest[0]==source[0]-1 and dest[1]==source[1] and board[source[0]-1][source[1]]=="":
+		if dest[0]==source[0]-1 and dest[1]==source[1] and board[source[0]-1][source[1]]=="" and board[source[0]-1][source[1]-1]=="" and board[source[0]-1][source[1]+1]=="":
 			valid=True
-		elif dest[0]==source[0]-2 and dest[1]==source[1] and board[source[0]-1][source[1]]=="" and board[source[0]-2][source[1]]=="":
+		elif dest[0]==source[0]-2 and source[0]==6 and dest[1]==source[1] and board[source[0]-1][source[1]]=="" and board[source[0]-2][source[1]]=="" and board[source[0]-1][source[1]-1]=="" and board[source[0]-1][source[1]+1]=="":
 			valid=True
 		elif dest[0]==source[0]-1 and dest[1]==source[1]-1 and board[source[0]-1][source[1]-1] in player1:
 			valid=True
 		elif dest[0]==source[0]-1 and dest[1]==source[1]+1  and board[source[0]-1][source[1]+1] in player1:
 			valid=True
 		else:	
-			valid=True
+			valid=False
 		if dest[0]==0:
 			promote=True
 	return valid,promote
@@ -897,7 +898,7 @@ def get_game_status(board,turn):
 			else:
 				status[0]=2
 
-
+  # Checking for check or checkmate for white pieces
 	if (white_king_row,white_king_col) in black_moves: 
 		if turn==1:
 			status[1]=1
@@ -909,10 +910,10 @@ def get_game_status(board,turn):
 			else:
 				status[1]=2
 
-	return status
+	return status,black_moves,white_moves
 
 
-def move_update(move_details,match,source_row,source_col,dest_row,dest_col,destination_piece,status):
+def move_update(move_details,match,source_row,source_col,dest_row,dest_col,destination_piece,status,castling={'move':False}):
 	data={}
 	data['status']='valid'
 	data['dest_row']=move_details['r2']
@@ -922,6 +923,24 @@ def move_update(move_details,match,source_row,source_col,dest_row,dest_col,desti
 	data['piece']=pieces[destination_piece]
 	ongoing_matches[session['room_id']].board[dest_row][dest_col]=destination_piece
 	ongoing_matches[session['room_id']].board[source_row][source_col]=""
+	ongoing_matches[session['room_id']].moved[source_row][source_col]=True
+
+	socketio.emit('move_update',data,room=session['room_id'])
+
+	if castling['move'] == True:
+		dest_rook_piece=ongoing_matches[session['room_id']].board[castling['rook_row']][castling['rook_col']]
+		ongoing_matches[session['room_id']].board[castling['rook_dest_row']][castling['rook_dest_col']]=dest_rook_piece
+		ongoing_matches[session['room_id']].board[castling['rook_row']][castling['rook_col']]=""
+		ongoing_matches[session['room_id']].moved[castling['rook_row']][castling['rook_col']]=True
+		data={}
+		data['status']='valid'
+		data['dest_row']=castling['rook_row']+1
+		data['dest_col']=castling['rook_dest_col']+1
+		data['source_row']=castling['rook_row']+1
+		data['source_col']=castling['rook_col']+1
+		data['piece']=pieces[dest_rook_piece]
+		socketio.emit('move_update',data,room=session['room_id'])
+
 	prev_turn=match.turn
 	turn_now=-1
 	if match.turn==0:
@@ -930,7 +949,6 @@ def move_update(move_details,match,source_row,source_col,dest_row,dest_col,desti
 	else:
 		ongoing_matches[session['room_id']].turn=0
 		turn_now=0
-	socketio.emit('move_update',data,room=session['room_id'])
 
 	if status[ongoing_matches[session['room_id']].turn]==1:
 		socketio.emit('turn',{'turn':'Your are checked'},room=int(match.players[turn_now]))
@@ -947,33 +965,85 @@ def move_update(move_details,match,source_row,source_col,dest_row,dest_col,desti
 @socketio.on('pawn_promotion')
 def pawn_promoted(data):
 	if 'room_id' in session:
+
 		piece=data['piece']
 		match=ongoing_matches[session['room_id']]
 		param=match.latest_move
-		if session['id']==match.awaiting_promotion:
-			if piece=="queen":
-				if(session['id']==match.players[0]):
-					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'q',param[6])
-				else:
-					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'Q',param[6])
-			elif piece=="rook":
-				if(session['id']==match.players[0]):
-					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'r',param[6])
-				else:
-					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'R',param[6])
-			elif piece=="knight":
-				if(session['id']==match.players[0]):
-					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'k',param[6])
-				else:
-					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'K',param[6])
-			elif piece=="bishop":
-				if(session['id']==match.players[0]):
-					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'b',param[6])
-				else:
-					move_update(param[0],param[1],param[2],param[3],param[4],param[5],'B',param[6])
-			else:
-				return
-			ongoing_matches[session['room_id']]=-1
+		turn=match.turn
+		if session['id']!=match.awaiting_promotion:
+			return
+
+		promotion_pieces=[
+		{'queen':'q','rook':'r','knight':'n','bishop':'b'},
+		{'queen':'Q','rook':'R','knight':'N','bishop':'B'},
+		]
+
+		if session['id']==match.players[0]:
+			index=0
+		else:
+			index=1
+
+		dest_piece=promotion_pieces[index][piece]
+
+		temp_board=copy.deepcopy(match.board)
+		temp_board[param[4]][param[5]]=dest_piece
+		temp_board[param[2]][param[3]]=""
+
+		status,black_moves,white_moves=get_game_status(temp_board,match.turn)
+		ongoing_matches[session['room_id']].awaiting_promotion=-1
+		if (turn==0 and status[0]!=-1) or (turn==1 and status[1]!=-1):
+			socketio.emit('move_update',{'status':'Not a valid move'},room=session['id'])
+			return
+		move_update(param[0],param[1],param[2],param[3],param[4],param[5],dest_piece,status)
+
+def validate_castling(match,move_details,source_row,source_col,dest_row,dest_col,turn):
+
+	if match.moved[source_row][4]==True:
+		return
+
+	if dest_col<source_col:
+		dest_rook=0
+		direction=-1
+		dest_rook_col=3
+		if match.board[source_row][2]!="" or match.board[source_row][3]!="" or match.board[source_row][4]!="":
+			return
+	else:
+		dest_rook=7
+		direction=1
+		dest_rook_col=5
+		if match.board[source_row][5]!="" or match.board[source_row][6]!="":
+			return
+
+	if match.moved[source_row][dest_rook]==True:
+		return
+
+	temp_board=copy.deepcopy(match.board)
+	temp_board[source_row][dest_col]=match.board[source_row][source_col]
+	temp_board[source_row][dest_rook_col]=match.board[source_row][dest_rook]
+	temp_board[source_row][source_col]=""
+	temp_board[source_row][dest_rook]=""
+
+	status,black_moves,white_moves=get_game_status(temp_board,turn)
+
+	if turn==0:
+		my_moves=black_moves
+		enemy_moves=white_moves
+	else:
+		my_moves=white_moves
+		enemy_moves=black_moves
+
+
+	if (dest_row,dest_col) in enemy_moves or (dest_row,source_col+direction) in enemy_moves:
+		return
+
+	if (turn==0 and status[0]!=-1) or (turn==1 and status[1]!=-1):
+		socketio.emit('move_update',{'status':'Not a valid move'},room=session['id'])
+
+
+	castling={'move':True,'rook_row':source_row,'rook_col':dest_rook,'rook_dest_row':source_row,'rook_dest_col':dest_rook_col}
+
+	destination_piece=ongoing_matches[session['room_id']].board[source_row][source_col]
+	move_update(move_details,match,source_row,source_col,dest_row,dest_col,destination_piece,status,castling=castling)
 
 @socketio.on('move')
 def move(move_details):
@@ -986,7 +1056,6 @@ def move(move_details):
 	source_col=int(move_details['c1'])-1
 	dest_row=int(move_details['r2'])-1
 	dest_col=int(move_details['c2'])-1
-	print(f"turn of{match.turn}")
 
 	#Player makes a move even if it is not his turn
 	cond1=session['id']!=match.players[match.turn]
@@ -1018,7 +1087,14 @@ def move(move_details):
 	else:
 		move_valid=False
 		promotion=False
-		if match.board[source_row][source_col] in ['p','P']:
+		castling_left_white=source_row==7 and source_col==4 and dest_col==6 and dest_row==7
+		castling_left_black=source_row==0 and source_col==4 and dest_col==6 and dest_row==0
+		castling_right_white=source_row==7 and source_col==4 and dest_col==2 and dest_row==7
+		castling_right_black=source_row==0 and source_col==4 and dest_col==2 and dest_row==0
+		if castling_right_black or castling_right_white or castling_left_white or castling_left_black:
+			validate_castling(match,move_details,source_row,source_col,dest_row,dest_col,match.turn)
+			return
+		elif match.board[source_row][source_col] in ['p','P']:
 			move_valid,promotion=validate_pawn(match.board,[source_row,source_col],[dest_row,dest_col],match.turn)
 		elif match.board[source_row][source_col] in ['r','R']:
 			move_valid=validate_rook(match.board,[source_row,source_col],[dest_row,dest_col],match.turn)
@@ -1036,13 +1112,12 @@ def move(move_details):
 		temp_board[source_row][source_col]=""
 		for i in range(len(match.board)):
 			print(temp_board[i])
-		status=get_game_status(temp_board,match.turn)
 
+		status,black_moves,white_moves=get_game_status(temp_board,match.turn)
 		if (match.turn==0 and status[0]!=-1) or (match.turn==1 and status[1]!=-1):
 			move_valid=False
 
 		if move_valid==True:
-			destination_piece=ongoing_matches[session['room_id']].board[source_row][source_col]
 			if promotion==True:
 				ongoing_matches[session['room_id']].awaiting_promotion=session['id']
 				ongoing_matches[session['room_id']].latest_move=(move_details,match,source_row,source_col,dest_row,dest_col,status,)
