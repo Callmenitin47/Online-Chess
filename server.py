@@ -423,7 +423,7 @@ def resign():
 		winner=match.players[0]
 		if session['id']==match.players[0]:
 			winner=match.players[1]
-		socketio.emit('match_ended',{'status':'You have won the game as opponent has left'},room=winner)
+		socketio.emit('match_ended',{'status':'You have won the game as opponent has resigned!'},room=winner)
 		save_game(match.players[0],match.players[1],winner,"finished")
 		del ongoing_matches[session['room_id']]
 		del session['room_id']
@@ -448,35 +448,45 @@ def validate_pawn(board,source,dest,player):
 	if player==1 and board[source[0]][source[1]]=='p':
 		return False,False
 
-	valid=False
-	promote=False;
-
-	if board[source[0]][source[1]]=='p':
-		if dest[0]==source[0]+1 and dest[1]==source[1] and board[source[0]+1][source[1]]=="" and board[source[0]+1][source[1]-1]=="" and board[source[0]+1][source[1]+1]=="":
-			valid=True
-		elif dest[0]==source[0]+2 and dest[1]==source[1] and source[0]==1 and board[source[0]+1][source[1]]=="" and board[source[0]+2][source[1]]=="" and board[source[0]+1][source[1]-1]=="" and board[source[0]+1][source[1]+1]=="":
-			valid=True
-		elif dest[0]==source[0]+1 and dest[1]==source[1]-1 and board[source[0]+1][source[1]-1] in player2:
-			valid=True
-		elif dest[0]==source[0]+1 and dest[1]==source[1]+1 and board[source[0]+1][source[1]+1] in player2:
-			valid=True
-		else:	
-			valid=False
-		if dest[0]==7:
-			promote=True
+	if player==0:
+		direction=1
+		start_pos=1
+		end_pos=7
+		enemy_player=player2
+		player=player1
 	else:
-		if dest[0]==source[0]-1 and dest[1]==source[1] and board[source[0]-1][source[1]]=="" and board[source[0]-1][source[1]-1]=="" and board[source[0]-1][source[1]+1]=="":
+		direction=-1
+		start_pos=6
+		end_pos=0
+		enemy_player=player1
+		player=player2
+
+	promote=False
+	valid=False
+
+	if dest[0]==source[0]+direction and dest[1]==source[1]:
+		cond1=board[source[0]+direction][source[1]]==""
+		cond2=source[1]-1<0 or board[source[0]+direction][source[1]-1]=="" or board[source[0]+direction][source[1]-1] in player
+		cond3=source[1]+1>7 or board[source[0]+direction][source[1]+1]=="" or board[source[0]+direction][source[1]+1] in player
+		if cond1 and cond2 and cond3:
 			valid=True
-		elif dest[0]==source[0]-2 and source[0]==6 and dest[1]==source[1] and board[source[0]-1][source[1]]=="" and board[source[0]-2][source[1]]=="" and board[source[0]-1][source[1]-1]=="" and board[source[0]-1][source[1]+1]=="":
+	elif dest[0]==source[0]+2*direction and dest[1]==source[1]:
+		cond1=board[source[0]+direction][source[1]]==""
+		cond2=board[source[0]+2*direction][source[1]]==""
+		cond3=source[1]-1<0 or board[source[0]+2*direction][source[1]-1]=="" or board[source[0]+2*direction][source[1]-1] in player
+		cond4=source[1]+1>7 or board[source[0]+2*direction][source[1]+1]=="" or board[source[0]+2*direction][source[1]+1] in player
+		if cond1 and cond2 and cond3 and cond4 and source[0]==start_pos:
 			valid=True
-		elif dest[0]==source[0]-1 and dest[1]==source[1]-1 and board[source[0]-1][source[1]-1] in player1:
-			valid=True
-		elif dest[0]==source[0]-1 and dest[1]==source[1]+1  and board[source[0]-1][source[1]+1] in player1:
-			valid=True
-		else:	
-			valid=False
-		if dest[0]==0:
-			promote=True
+	elif dest[0]==source[0]+1 and dest[1]==source[1]-1 and board[source[0]+1][source[1]-1] in enemy_player:
+		valid=True
+	elif dest[0]==source[0]+1 and dest[1]==source[1]+1 and board[source[0]+1][source[1]+1] in enemy_player:
+		valid=True
+	else:
+		valid=False
+
+	if valid==True and end_pos==dest[0]:
+		promote=True
+
 	return valid,promote
 
 
@@ -701,7 +711,7 @@ def in_range(row,col):
 	return False
 
 
-def get_rook_moves(moves,row_num,col_num,player,board,king,attacker):
+def get_rook_moves(moves,row_num,col_num,board,king,attacker):
 	directions=[(1,0),(-1,0),(0,1),(0,-1)]
 	for i in range(len(directions)):
 		row=row_num
@@ -726,7 +736,7 @@ def get_rook_moves(moves,row_num,col_num,player,board,king,attacker):
 			else:
 				break
 
-def get_queen_moves(moves,row_num,col_num,player,board,king,attacker):
+def get_queen_moves(moves,row_num,col_num,board,king,attacker):
 	directions=[(1,0),(-1,0),(0,1),(0,-1),(1,1),(1,-1),(-1,1),(-1,-1)]
 	for i in range(len(directions)):
 		row=row_num
@@ -751,7 +761,7 @@ def get_queen_moves(moves,row_num,col_num,player,board,king,attacker):
 			else:
 				break
 
-def get_bishop_moves(moves,row_num,col_num,player,board,king,attacker):
+def get_bishop_moves(moves,row_num,col_num,board,king,attacker):
 	directions=[(1,1),(1,-1),(-1,1),(-1,-1)]
 	for i in range(len(directions)):
 		row=row_num
@@ -776,7 +786,7 @@ def get_bishop_moves(moves,row_num,col_num,player,board,king,attacker):
 			else:
 				break
 
-def get_knight_moves(moves,row_num,col_num,player,board,king,attacker):
+def get_knight_moves(moves,row_num,col_num,board,king,attacker):
 	directions=[(-2,1),(-2,-1),(-1,2),(-1,-2),(2,-1),(2,1),(1,-2),(1,2)]
 	for i in range(len(directions)):
 		row=row_num
@@ -793,7 +803,7 @@ def get_knight_moves(moves,row_num,col_num,player,board,king,attacker):
 				continue
 
 
-def get_king_moves(moves,row_num,col_num,player,board,king,attacker):
+def get_king_moves(moves,row_num,col_num,board,king,attacker):
 	directions=[(-1,-1),(-1,0),(-1,1),(1,-1),(1,0),(1,1),(0,-1),(0,1)]
 	for i in range(len(directions)):
 		row=row_num
@@ -819,13 +829,13 @@ def get_pawn_moves(moves,row_num,col_num,player,board,king,dr,attacker):
 		if board[row_num+dr][col_num+1]==king:
 			attacker.append((row_num,col_num))
 
-def get_game_status(board,turn):
+def get_pos(board,piece):
+	for i in range(8):
+		for j in range(8):
+			if board[i][j]==piece:
+				return i,j
 
-	def get_pos(piece):
-		for i in range(8):
-			for j in range(8):
-				if board[i][j]==piece:
-					return i,j
+def get_game_status(board,turn):
 	status=[-1,-1]
 	black_moves=set()
 	white_moves=set()
@@ -835,25 +845,25 @@ def get_game_status(board,turn):
 	for i in range(8):
 		for j in range(8):
 			if board[i][j]=="r":
-				get_rook_moves(black_moves,i,j,player1,board,"K",black_attackers)
+				get_rook_moves(black_moves,i,j,board,"K",black_attackers)
 			elif board[i][j]=="R":
-				get_rook_moves(white_moves,i,j,player2,board,"k",white_attackers)
+				get_rook_moves(white_moves,i,j,board,"k",white_attackers)
 			elif board[i][j]=="q":
-				get_queen_moves(black_moves,i,j,player1,board,"K",black_attackers)
+				get_queen_moves(black_moves,i,j,board,"K",black_attackers)
 			elif board[i][j]=="Q":
-				get_queen_moves(white_moves,i,j,player2,board,"k",white_attackers)
+				get_queen_moves(white_moves,i,j,board,"k",white_attackers)
 			elif board[i][j]=="b":
-				get_bishop_moves(black_moves,i,j,player1,board,"K",black_attackers)
+				get_bishop_moves(black_moves,i,j,board,"K",black_attackers)
 			elif board[i][j]=="B":
-				get_bishop_moves(white_moves,i,j,player2,board,"k",white_attackers)
+				get_bishop_moves(white_moves,i,j,board,"k",white_attackers)
 			elif board[i][j]=="n":
-				get_knight_moves(black_moves,i,j,player1,board,"K",black_attackers)
+				get_knight_moves(black_moves,i,j,board,"K",black_attackers)
 			elif board[i][j]=="N":
-				get_knight_moves(white_moves,i,j,player2,board,"k",white_attackers)
+				get_knight_moves(white_moves,i,j,board,"k",white_attackers)
 			elif board[i][j]=="k":
-				get_king_moves(black_moves,i,j,player1,board,"K",black_attackers)
+				get_king_moves(black_moves,i,j,board,"K",black_attackers)
 			elif board[i][j]=="K":
-				get_king_moves(white_moves,i,j,player2,board,"k",white_attackers)
+				get_king_moves(white_moves,i,j,board,"k",white_attackers)
 			elif board[i][j]=="p":
 				get_pawn_moves(black_moves,i,j,player2,board,"K",1,black_attackers)
 			elif board[i][j]=="P":
@@ -882,8 +892,8 @@ def get_game_status(board,turn):
 			return True
 
 
-	black_king_row,black_king_col=get_pos('k')
-	white_king_row,white_king_col=get_pos('K')
+	black_king_row,black_king_col=get_pos(board,'k')
+	white_king_row,white_king_col=get_pos(board,'K')
 
     # Checking for check or checkmate for black pieces
 
@@ -893,7 +903,9 @@ def get_game_status(board,turn):
 			return
 		else:
 			enemy_row,enemy_col=white_attackers[0][0],white_attackers[0][1]
-			if (enemy_row,enemy_col) in black_moves and (enemy_row,enemy_col) not in white_moves and not (is_checkmate((black_king_row,black_king_col),white_moves,player1)):
+			if (enemy_row,enemy_col) in black_moves and (enemy_row,enemy_col) not in white_moves:
+				status[0]=1
+			elif is_checkmate((black_king_row,black_king_col),white_moves,player1)==False:
 				status[0]=1
 			else:
 				status[0]=2
@@ -905,12 +917,115 @@ def get_game_status(board,turn):
 			return
 		else:
 			enemy_row,enemy_col=black_attackers[0][0],black_attackers[0][1]
-			if (enemy_row,enemy_col) in white_moves and (enemy_row,enemy_col) not in black_moves and not (is_checkmate((white_king_row,white_king_col),black_moves,player2)):
+			if (enemy_row,enemy_col) in white_moves and (enemy_row,enemy_col) not in black_moves:
+				status[1]=1
+			elif is_checkmate((white_king_row,white_king_col),black_moves,player2)==False:
 				status[1]=1
 			else:
 				status[1]=2
 
 	return status,black_moves,white_moves
+
+
+def get_player_moves(valid_moves,pieces_locations,board,enemy_king,player_pieces,playerid):
+
+	attackers=[]
+
+	for i in range(8):
+		for j in range(8):
+			if board[i][j] in player_pieces:
+				pieces_locations.append((i,j))
+				moves=set()
+				if board[i][j] in ['r','R']:
+					get_rook_moves(moves,i,j,board,enemy_king,attackers)
+				elif board[i][j] in ['n','N']:
+					get_knight_moves(moves,i,j,board,enemy_king,attackers)
+				elif board[i][j] in ['q','Q']:
+					get_queen_moves(moves,i,j,board,enemy_king,attackers)
+				elif board[i][j] in ['k','K']:
+					get_king_moves(moves,i,j,board,enemy_king,attackers)
+				elif board[i][j] in ['b','B']:
+					get_bishop_moves(moves,i,j,board,enemy_king,attackers)
+				else:
+					if board[i][j]=='p':
+						direction=1
+						start_pos=2
+					else:
+						direction=-1
+						start_pos=6
+					status=[False]*4
+					positions=[(i+direction,j),(i+2*direction,j),(i+direction,j-1),(i+direction,j+1)]
+					if i+direction<8 and i+direction>=0:
+						status[0],promotion=validate_pawn(board,(i,j),(i+direction,j),playerid)
+					if i+2*direction<8 and i+2*direction>=0 and i==start_pos:
+						status[1],promotion=validate_pawn(board,(i,j),(i+2*direction,j),playerid)
+					if i+direction<8 and i+direction>=0 and j-1>=0:
+						status[2],promotion=validate_pawn(board,(i,j),(i+direction,j-1),playerid)
+					if i+direction<8 and i+direction>=0 and j+1<8:
+						status[3],promotion=validate_pawn(board,(i,j),(i+direction,j+1),playerid)
+
+					for k in range(4):
+						if status[k]==True:
+							moves.add(positions[k])
+
+				valid_moves[(i,j)]=[]
+				moves=list(moves)
+				for k in range(len(moves)):
+					valid_moves[(i,j)].append(moves[k])
+
+
+def stalemate(playerid):
+
+	#The logic is to check if there is any valid move available
+
+	if playerid==0:
+		enemy_id=1
+		player_pieces=player1
+		enemy_pieces=player2
+		enemy_king='K'
+		player_king='k'
+	else:
+		enemy_id=0
+		player_pieces=player2
+		enemy_pieces=player1
+		enemy_king='k'
+		player_king='K'
+
+	board=ongoing_matches[session['room_id']].board
+	valid_moves=dict()
+	pieces_locations=[]
+	attackers=[]
+
+	get_player_moves(valid_moves,pieces_locations,board,enemy_king,player_pieces,playerid)
+
+
+	king_row,king_col=get_pos(board,player_king)
+
+	for key in valid_moves.keys():
+		pos=valid_moves[key]
+		for j in range(len(pos)):
+			if (pos[j][0],pos[j][1]) not in pieces_locations:
+				temp_board=copy.deepcopy(board)
+				piece=temp_board[key[0]][key[1]]
+				temp_board[key[0]][key[1]]=""
+				temp_board[pos[j][0]][pos[j][1]]=piece
+
+			#get enemey moves here
+				enemy_valid_moves=dict()
+				enemy_pieces_locations=[]
+				get_player_moves(enemy_valid_moves,enemy_pieces_locations,board,player_king,enemy_pieces,enemy_id)
+				enemy_moves=set()
+
+				for enemy_key in enemy_valid_moves.keys():
+					enemy_pos=enemy_valid_moves[enemy_key]
+					for k in range(len(enemy_pos)):
+						enemy_moves.add(enemy_pos[k])
+						
+			#check if my king falls in enemies moves
+				if (king_row,king_col) not in enemy_moves:
+					return False
+
+	return True
 
 
 def move_update(move_details,match,source_row,source_col,dest_row,dest_col,destination_piece,status,castling={'move':False}):
@@ -959,8 +1074,15 @@ def move_update(move_details,match,source_row,source_col,dest_row,dest_col,desti
 		del ongoing_matches[session['room_id']]
 		del session['room_id']
 	else:
-		socketio.emit('turn',{'turn':'Your turn'},room=int(match.players[turn_now]))
-		socketio.emit('turn',{'turn':'Opponents turn'},room=int(match.players[prev_turn]))
+		if stalemate(turn_now)==False:			
+			socketio.emit('turn',{'turn':'Your turn'},room=int(match.players[turn_now]))
+			socketio.emit('turn',{'turn':'Opponents turn'},room=int(match.players[prev_turn]))
+		else:
+			socketio.emit('match_ended',{'status':'Game has been drawn'},room=session['room_id'])
+			save_game(match.players[0],match.players[1],-1,"drawn")
+			del ongoing_matches[session['room_id']]
+			del session['room_id']
+
 
 @socketio.on('pawn_promotion')
 def pawn_promoted(data):
@@ -1133,11 +1255,9 @@ def move(move_details):
 def draw_move(data):
 	if 'room_id' in session:
 		player_id=session['id']
-		print("oay")
 		if player_id==ongoing_matches[session['room_id']].draw:
 			match=ongoing_matches[session['room_id']]
 			if data['offer']=='accepted':
-				print("checing offer")
 				socketio.emit('match_ended',{'status':'Game has been drawn'},room=session['room_id'])
 				save_game(match.players[0],match.players[1],-1,"drawn")
 				del ongoing_matches[session['room_id']]
