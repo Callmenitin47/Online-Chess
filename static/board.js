@@ -154,6 +154,7 @@ function newGame() {
 function resignGame() {
     document.getElementById('winner-message').innerHTML="You have resigned from the game!";
     document.getElementById('winner-popup').style.display="flex";
+    socket.emit('resign');
 }
 
 function offerDraw() {
